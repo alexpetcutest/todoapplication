@@ -1,0 +1,71 @@
+---
+    - name: Deploy app
+      hosts: all
+      become: true
+    
+      tasks:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+    
+        - name: Install prerequisites
+          apt:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - gnupg2
+              - software-properties-common
+              - python
+              - python-pip
+              - ansible
+            state: present
+    
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+    
+        - name: Add Docker repository
+          apt_repository:
+            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+            state: present
+
+        - name: Cache update
+          apt:
+            update_cache: yes
+    
+        - name: Install Docker
+          apt:
+            name: docker-ce
+            state: present
+            update_cache: yes
+            force_apt_get: yes
+
+        - name: Create Docker network
+          docker_network:
+            name: todoapp
+            state: present
+    
+        - name: Start Docker service
+          service:
+            name: docker
+            state: started
+    
+        - name: Start Docker Compose
+          become: yes
+          docker_compose:
+            project_src: /home/azureuser/todoapp/app
+            project_name: todo-app
+            state: present
+            recreate: always
+            pull: yes
+            build: yes
+            timeout: 300
+            remove_orphans: yes
+            validate_certs: no
+            networks:
+              - todoapp
+          environment:
+            APP_PORT: "{{ app_port }}"
+    
